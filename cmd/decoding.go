@@ -81,7 +81,7 @@ func unmarshalVaruint(rawSrc []byte, length uint, index uint) (res Varuint, newI
 func Base64UrlDecoder(rawSrc []byte) (Packet, error) {
 	data := Packet{}
 	decoded, err := base64.RawURLEncoding.DecodeString(string(rawSrc[:]))
-
+	fmt.Println(len(decoded))
 	if err == nil {
 		_ = data.Unmarshal(decoded)
 	}
