@@ -8,35 +8,6 @@ import (
 	"net/http"
 )
 
-type Varuint uint64 // Assuming the maximum value is within 32 bits
-type Bytes []byte
-type String struct {
-	Length byte
-	Value  string
-}
-
-type Payload struct {
-	Src     Varuint
-	Dst     Varuint
-	Serial  Varuint
-	DevType byte
-	Cmd     byte
-	CmdBody Bytes
-}
-
-// Define the array type
-type Array struct {
-	Length   byte
-	Elements []interface{} // This can hold any type
-}
-
-// Define the packet and payload structures
-type Packet struct {
-	Length  byte
-	Payload Payload
-	Src8    byte
-}
-
 func main() {
 	url := "http://localhost:9998"
 	data := []byte("")
@@ -57,4 +28,10 @@ func main() {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	fmt.Printf("Response Status: %s\n", body)
+	packet, _ := Base64UrlDecoder(body)
+	fmt.Println(packet.Crc8)
+	//encoded := Base64UrlEncoder(packet)
+	//fmt.Printf("%X %X %X %X %X %X\n", packet.Payload.Src, packet.Payload.Dst, packet.Payload.Serial, packet.Payload.DevType, packet.Payload.Cmd, packet.Payload.CmdBody)
+	//fmt.Println(string(body))
+	//fmt.Println(encoded)
 }
