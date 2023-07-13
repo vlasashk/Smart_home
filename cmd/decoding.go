@@ -28,37 +28,40 @@ func (data *Packet) Unmarshal(rawSrc []byte) (int, error) {
 }
 
 func (data *Packet) Marshal() ([]byte, error) {
-	rawData := make([]byte, data.Length+2)
-	rawData[0] = data.Length
-	var index uint = 1
-	index = marshalVaruint(data.Payload.Src, rawData, index)
-	index = marshalVaruint(data.Payload.Dst, rawData, index)
-	index = marshalVaruint(data.Payload.Serial, rawData, index)
-	rawData[index] = data.Payload.DevType
-	rawData[index+1] = data.Payload.Cmd
+	payloadRaw := make([]byte, 0, 8)
+	var index uint = 0
+	index = marshalVaruint(data.Payload.Src, &payloadRaw, index)
+	index = marshalVaruint(data.Payload.Dst, &payloadRaw, index)
+	index = marshalVaruint(data.Payload.Serial, &payloadRaw, index)
+	payloadRaw = append(payloadRaw, data.Payload.DevType)
+	payloadRaw = append(payloadRaw, data.Payload.Cmd)
 	index += 2
 	//for i := 0; i < len(data.Payload.CmdBody); i++ {
 	//	rawData[index] = data.Payload.CmdBody[i]
 	//	index++
 	//}
-	rawData[data.Length+1] = ComputeCRC8(rawData[1 : data.Length+1])
+	payloadLen := len(payloadRaw)
+	rawData := make([]byte, payloadLen+2)
+	rawData[0] = byte(payloadLen)
+	copy(rawData[1:], payloadRaw)
+	rawData[payloadLen+1] = ComputeCRC8(rawData[1 : payloadLen+1])
 	return rawData, nil
 }
 
-func marshalVaruint(src Varuint, rawData []byte, index uint) uint {
+func marshalVaruint(src Varuint, rawData *[]byte, index uint) uint {
 	octal := Varuint(0xFF)
 	temp := make([]byte, 0, 8)
 	tempLen := 0
-	temp = append(temp, rawData[index]|byte(src&octal))
+	temp = append(temp, byte(src&octal))
 	src >>= 8
 	tempLen++
 	for src != 0 {
-		temp = append(temp, rawData[index]|byte(src&octal))
+		temp = append(temp, byte(src&octal))
 		src >>= 8
 		tempLen++
 	}
 	for i := len(temp) - 1; i >= 0; i-- {
-		rawData[index] = temp[i]
+		*rawData = append(*rawData, temp[i])
 		index++
 	}
 	return index
@@ -100,6 +103,7 @@ func Base64UrlDecoder(rawSrc []byte) ([]Packet, error) {
 
 func Base64UrlEncoder(data Packet) string {
 	test, _ := data.Marshal()
+	fmt.Printf("%X\n", test)
 	encode := base64.RawURLEncoding.EncodeToString(test)
 	return encode
 }

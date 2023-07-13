@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 func main() {
@@ -16,7 +17,8 @@ func main() {
 		os.Exit(1)
 	}
 	url := os.Args[1]
-	//srcAddress, _ := strconv.ParseInt(os.Args[2], 16, 64)
+	srcAddress, _ := strconv.ParseUint(os.Args[2], 16, 64)
+	InitialPacket(srcAddress)
 	data := []byte("C7MG_383AQEDSFVCuQ")
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
@@ -42,4 +44,15 @@ func main() {
 	//fmt.Printf("%X %X %X %X %X %X\n", packet.Payload.Src, packet.Payload.Dst, packet.Payload.Serial, packet.Payload.DevType, packet.Payload.Cmd, packet.Payload.CmdBody)
 	//fmt.Println(string(body))
 	//fmt.Println(encoded)
+}
+
+func InitialPacket(hubAddress uint64) (res Packet) {
+	res.Payload.Src = EncodeULEB128(hubAddress)
+	res.Payload.Dst = EncodeULEB128(0x3FFF)
+	res.Payload.Serial = EncodeULEB128(1)
+	res.Payload.DevType = 1
+	res.Payload.Cmd = 1
+	res.Payload.CmdBody = nil
+	Base64UrlEncoder(res)
+	return
 }

@@ -1,15 +1,21 @@
 package main
 
 type Varuint uint64
-type Bytes []byte
 
 type DeviceInfo interface {
-	Unmarshal() int
+	UnmarshalInfo(rawSrc *[]byte) int
+	//MarshalInfo() int
 }
 
 type String struct {
 	Length byte
 	Value  string
+}
+
+type Packet struct {
+	Length  byte
+	Payload Payload
+	Crc8    byte
 }
 
 type Payload struct {
@@ -23,7 +29,7 @@ type Payload struct {
 
 type Device struct {
 	DevName  String
-	DevProps Bytes
+	DevProps DeviceInfo
 }
 
 type Array struct {
@@ -31,12 +37,23 @@ type Array struct {
 	Elements []interface{} // This can hold any type
 }
 
-type Packet struct {
-	Length  byte
-	Payload Payload
-	Crc8    byte
+type TimerCmdBody struct {
+	Timestamp Varuint
 }
 
-type TimerCmdBody struct {
-	timestamp Varuint
+type EnvSensorStatus struct {
+	Values []Varuint
+}
+
+type switchOnOff struct {
+	Status byte
+}
+
+type EnvSensorProps struct {
+	Sensors  byte
+	Triggers []struct {
+		Op    byte
+		Value Varuint
+		Name  string
+	}
 }
