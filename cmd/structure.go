@@ -2,6 +2,11 @@ package main
 
 type Varuint uint64
 type Bytes []byte
+
+type DeviceInfo interface {
+	Unmarshal() int
+}
+
 type String struct {
 	Length byte
 	Value  string
@@ -13,12 +18,12 @@ type Payload struct {
 	Serial  Varuint
 	DevType byte
 	Cmd     byte
-	CmdBody Bytes
+	CmdBody DeviceInfo
 }
 
 type Device struct {
-	dev_name  String
-	dev_props Bytes
+	DevName  String
+	DevProps Bytes
 }
 
 type Array struct {
@@ -30,4 +35,8 @@ type Packet struct {
 	Length  byte
 	Payload Payload
 	Crc8    byte
+}
+
+type TimerCmdBody struct {
+	timestamp Varuint
 }

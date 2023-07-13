@@ -11,13 +11,13 @@ import (
 
 func main() {
 	argsToRun := os.Args
-	if len(argsToRun) < 2 {
+	if len(argsToRun) < 3 {
 		fmt.Println("Please provide a URL")
 		os.Exit(1)
 	}
 	url := os.Args[1]
+	//srcAddress, _ := strconv.ParseInt(os.Args[2], 16, 64)
 	data := []byte("C7MG_383AQEDSFVCuQ")
-
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
 		log.Panic("Error creating request:", err)
@@ -35,7 +35,9 @@ func main() {
 	body, err := ioutil.ReadAll(resp.Body)
 	fmt.Printf("Response Status: %s\n", body)
 	packet, _ := Base64UrlDecoder(body)
-	fmt.Println(packet)
+	for i := 0; i < len(packet); i++ {
+		fmt.Println(packet[i])
+	}
 	//encoded := Base64UrlEncoder(packet)
 	//fmt.Printf("%X %X %X %X %X %X\n", packet.Payload.Src, packet.Payload.Dst, packet.Payload.Serial, packet.Payload.DevType, packet.Payload.Cmd, packet.Payload.CmdBody)
 	//fmt.Println(string(body))

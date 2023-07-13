@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func (data *Packet) Unmarshal(rawSrc []byte) error {
+func (data *Packet) Unmarshal(rawSrc []byte) (int, error) {
 	var index uint = 1
 	var err error = nil
 	data.Length = rawSrc[0]
@@ -18,12 +18,13 @@ func (data *Packet) Unmarshal(rawSrc []byte) error {
 		data.Payload.DevType = rawSrc[index]
 		data.Payload.Cmd = rawSrc[index+1]
 		index += 2
-		data.Payload.CmdBody = rawSrc[index : data.Length+1]
+		//data.Payload.CmdBody = ParseCmdBody(data.Payload.DevType, data.Payload.Cmd, rawSrc[index:data.Length+1])
+		//data.Payload.CmdBody = rawSrc[index : data.Length+1]
 	} else {
 		err = fmt.Errorf("ERROR: CRC8 values do not match. Calculated = %d, Received = %d", computeCrc, data.Crc8)
 	}
 
-	return err
+	return int(data.Length + 2), err
 }
 
 func (data *Packet) Marshal() ([]byte, error) {
@@ -36,10 +37,10 @@ func (data *Packet) Marshal() ([]byte, error) {
 	rawData[index] = data.Payload.DevType
 	rawData[index+1] = data.Payload.Cmd
 	index += 2
-	for i := 0; i < len(data.Payload.CmdBody); i++ {
-		rawData[index] = data.Payload.CmdBody[i]
-		index++
-	}
+	//for i := 0; i < len(data.Payload.CmdBody); i++ {
+	//	rawData[index] = data.Payload.CmdBody[i]
+	//	index++
+	//}
 	rawData[data.Length+1] = ComputeCRC8(rawData[1 : data.Length+1])
 	return rawData, nil
 }
@@ -78,12 +79,21 @@ func unmarshalVaruint(rawSrc []byte, length uint, index uint) (res Varuint, newI
 	return
 }
 
-func Base64UrlDecoder(rawSrc []byte) (Packet, error) {
-	data := Packet{}
+func Base64UrlDecoder(rawSrc []byte) ([]Packet, error) {
+	data := make([]Packet, 0)
 	decoded, err := base64.RawURLEncoding.DecodeString(string(rawSrc[:]))
-	fmt.Println(len(decoded))
+	totalLen := len(decoded)
 	if err == nil {
-		_ = data.Unmarshal(decoded)
+		var processedSize, packetSize int
+		for i := 0; totalLen > processedSize; i++ {
+			data = append(data, Packet{})
+			packetSize, err = data[i].Unmarshal(decoded[processedSize:])
+			processedSize += packetSize
+
+			if err != nil {
+				break
+			}
+		}
 	}
 	return data, err
 }
@@ -92,4 +102,34 @@ func Base64UrlEncoder(data Packet) string {
 	test, _ := data.Marshal()
 	encode := base64.RawURLEncoding.EncodeToString(test)
 	return encode
+}
+
+func DecodeULEB128(value Varuint) (result uint64) {
+	var maskULEB uint64 = 0x7F
+	for {
+		result |= maskULEB & uint64(value)
+		value >>= 8
+		if value == 0 {
+			break
+		} else {
+			result <<= 7
+		}
+	}
+	return result
+}
+
+func EncodeULEB128(value uint64) (result Varuint) {
+	var maskULEB uint64 = 0x7F
+	var highULEB uint64 = 0x80
+	for {
+		result |= Varuint(maskULEB & value)
+		value >>= 7
+		if value == 0 {
+			break
+		} else {
+			result |= Varuint(highULEB)
+			result <<= 8
+		}
+	}
+	return result
 }
