@@ -3,13 +3,8 @@ package main
 type Varuint uint64
 
 type DeviceInfo interface {
-	UnmarshalInfo(rawSrc *[]byte) int
-	//MarshalInfo() int
-}
-
-type String struct {
-	Length byte
-	Value  string
+	UnmarshalInfo(rawSrc []byte)
+	MarshalInfo(rawSrc *[]byte)
 }
 
 type Packet struct {
@@ -28,13 +23,12 @@ type Payload struct {
 }
 
 type Device struct {
-	DevName  String
+	DevName  string
 	DevProps DeviceInfo
 }
-
-type Array struct {
-	Length   byte
-	Elements []interface{} // This can hold any type
+type PropsString struct {
+	Length byte
+	Name   []string
 }
 
 type TimerCmdBody struct {
@@ -45,15 +39,17 @@ type EnvSensorStatus struct {
 	Values []Varuint
 }
 
-type switchOnOff struct {
+type SwitchOnOff struct {
 	Status byte
 }
 
 type EnvSensorProps struct {
 	Sensors  byte
-	Triggers []struct {
-		Op    byte
-		Value Varuint
-		Name  string
-	}
+	Triggers []TriggersT
+}
+
+type TriggersT struct {
+	Op    byte
+	Value Varuint
+	Name  string
 }

@@ -18,8 +18,7 @@ func (data *Packet) Unmarshal(rawSrc []byte) (int, error) {
 		data.Payload.DevType = rawSrc[index]
 		data.Payload.Cmd = rawSrc[index+1]
 		index += 2
-		//data.Payload.CmdBody = ParseCmdBody(data.Payload.DevType, data.Payload.Cmd, rawSrc[index:data.Length+1])
-		//data.Payload.CmdBody = rawSrc[index : data.Length+1]
+		data.Payload.CmdBody = ParseCmdBody(data.Payload.DevType, data.Payload.Cmd, rawSrc[index:data.Length+1])
 	} else {
 		err = fmt.Errorf("ERROR: CRC8 values do not match. Calculated = %d, Received = %d", computeCrc, data.Crc8)
 	}
@@ -27,28 +26,26 @@ func (data *Packet) Unmarshal(rawSrc []byte) (int, error) {
 	return int(data.Length + 2), err
 }
 
-func (data *Packet) Marshal() ([]byte, error) {
+func (data *Packet) Marshal() []byte {
 	payloadRaw := make([]byte, 0, 8)
-	var index uint = 0
-	index = marshalVaruint(data.Payload.Src, &payloadRaw, index)
-	index = marshalVaruint(data.Payload.Dst, &payloadRaw, index)
-	index = marshalVaruint(data.Payload.Serial, &payloadRaw, index)
+	marshalVaruint(data.Payload.Src, &payloadRaw)
+	marshalVaruint(data.Payload.Dst, &payloadRaw)
+	marshalVaruint(data.Payload.Serial, &payloadRaw)
 	payloadRaw = append(payloadRaw, data.Payload.DevType)
 	payloadRaw = append(payloadRaw, data.Payload.Cmd)
-	index += 2
-	//for i := 0; i < len(data.Payload.CmdBody); i++ {
-	//	rawData[index] = data.Payload.CmdBody[i]
-	//	index++
-	//}
+	if data.Payload.CmdBody != nil {
+		data.Payload.CmdBody.MarshalInfo(&payloadRaw)
+	}
+
 	payloadLen := len(payloadRaw)
 	rawData := make([]byte, payloadLen+2)
 	rawData[0] = byte(payloadLen)
 	copy(rawData[1:], payloadRaw)
 	rawData[payloadLen+1] = ComputeCRC8(rawData[1 : payloadLen+1])
-	return rawData, nil
+	return rawData
 }
 
-func marshalVaruint(src Varuint, rawData *[]byte, index uint) uint {
+func marshalVaruint(src Varuint, rawData *[]byte) {
 	octal := Varuint(0xFF)
 	temp := make([]byte, 0, 8)
 	tempLen := 0
@@ -62,9 +59,7 @@ func marshalVaruint(src Varuint, rawData *[]byte, index uint) uint {
 	}
 	for i := len(temp) - 1; i >= 0; i-- {
 		*rawData = append(*rawData, temp[i])
-		index++
 	}
-	return index
 }
 
 func unmarshalVaruint(rawSrc []byte, length uint, index uint) (res Varuint, newIndex uint) {
@@ -101,8 +96,12 @@ func Base64UrlDecoder(rawSrc []byte) ([]Packet, error) {
 	return data, err
 }
 
-func Base64UrlEncoder(data Packet) string {
-	test, _ := data.Marshal()
+func Base64UrlEncoder(data []Packet) string {
+	length := len(data)
+	test := data[0].Marshal()
+	for i := 1; i < length; i++ {
+		test = append(test, data[i].Marshal()...)
+	}
 	fmt.Printf("%X\n", test)
 	encode := base64.RawURLEncoding.EncodeToString(test)
 	return encode

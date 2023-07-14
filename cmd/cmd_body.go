@@ -1,60 +1,113 @@
 package main
 
 const (
-	WHOISHERE_CMD = iota + 1
-	IAMHERE_CMD
-	GETSTATUS_CMD
-	STATUS_CMD
-	SETSTATUS_CMD
-	TICK_CMD
+	WhoIsHereCMD = iota + 1
+	IamHereCMD
+	GetStatusCMD
+	StatusCMD
+	SetStatusCMD
+	TickCMD
 )
 const (
-	SmartHub_Dev = iota + 1
-	EnvSensor_Dev
-	Switch_Dev
-	Lamp_Dev
-	Socket_Dev
-	Clock_Dev
+	SmartHubDev = iota + 1
+	EnvSensorDev
+	SwitchDev
+	LampDev
+	SocketDev
+	ClockDev
 )
 
-func ParseCmdBody(device, cmd byte, rawSrc *[]byte) DeviceInfo {
+func ParseCmdBody(device, cmd byte, rawSrc []byte) DeviceInfo {
 	var res DeviceInfo
 	switch {
-	case device == SmartHub_Dev:
+	case device == SmartHubDev:
 		res = &Device{}
-	case device == EnvSensor_Dev && (cmd == WHOISHERE_CMD || cmd == IAMHERE_CMD):
-		res = &Device{}
-	case device == EnvSensor_Dev && cmd == STATUS_CMD:
+	case device == EnvSensorDev && (cmd == WhoIsHereCMD || cmd == IamHereCMD):
+		res = &Device{
+			DevProps: &EnvSensorProps{},
+		}
+	case device == EnvSensorDev && cmd == StatusCMD:
 		res = &EnvSensorStatus{}
-	case device == Switch_Dev && (cmd == WHOISHERE_CMD || cmd == IAMHERE_CMD):
+	case device == SwitchDev && (cmd == WhoIsHereCMD || cmd == IamHereCMD):
+		res = &Device{
+			DevProps: &PropsString{},
+		}
+	case device == SwitchDev && cmd == StatusCMD:
+		res = &SwitchOnOff{}
+	case (device == LampDev || device == SocketDev) && (cmd == WhoIsHereCMD || cmd == IamHereCMD):
 		res = &Device{}
-	case device == Switch_Dev && cmd == STATUS_CMD:
-		res = &switchOnOff{}
-	case (device == Lamp_Dev || device == Socket_Dev) && (cmd == WHOISHERE_CMD || cmd == IAMHERE_CMD):
-		res = &Device{}
-	case (device == Lamp_Dev || device == Socket_Dev) && (cmd == STATUS_CMD || cmd == SETSTATUS_CMD):
-		res = &switchOnOff{}
-	case cmd == TICK_CMD:
+	case (device == LampDev || device == SocketDev) && (cmd == StatusCMD || cmd == SetStatusCMD):
+		res = &SwitchOnOff{}
+	case cmd == TickCMD:
 		res = &TimerCmdBody{}
+	case device == ClockDev && cmd == IamHereCMD:
+		res = &Device{}
 	}
+	res.UnmarshalInfo(rawSrc)
 	return res
 }
 
-func (timerType *TimerCmdBody) UnmarshalInfo(rawSrc *[]byte) int {
-	return 6
+func (timerType *TimerCmdBody) UnmarshalInfo(rawSrc []byte) {
+	timerType.Timestamp, _ = unmarshalVaruint(rawSrc, uint(len(rawSrc)), 0)
+	return
 }
 
-func (deviceType *Device) UnmarshalInfo(rawSrc *[]byte) int {
-	return 1
-}
-func (sensorStatusType *EnvSensorStatus) UnmarshalInfo(rawSrc *[]byte) int {
-	return 1
-}
-
-func (onOffType *switchOnOff) UnmarshalInfo(rawSrc *[]byte) int {
-	return 1
+func ParseString(rawSrc []byte) (res string, newIndex uint) {
+	length := uint(rawSrc[0])
+	newIndex = length + 1
+	res = string(rawSrc[1:newIndex])
+	return
 }
 
-//func (sensorPropsType *EnvSensorProps) UnmarshalInfo(rawSrc *[]byte) int {
-//	return 1
-//}
+func (deviceType *Device) UnmarshalInfo(rawSrc []byte) {
+	var index uint
+	deviceType.DevName, index = ParseString(rawSrc)
+	switch deviceType.DevProps.(type) {
+	case *EnvSensorProps:
+		deviceType.DevProps.UnmarshalInfo(rawSrc[index:])
+	case *PropsString:
+		deviceType.DevProps.UnmarshalInfo(rawSrc[index:])
+	}
+}
+
+func (sensorStatusType *EnvSensorStatus) UnmarshalInfo(rawSrc []byte) {
+	length := rawSrc[0]
+	var index uint = 1
+	sensorStatusType.Values = make([]Varuint, length)
+	for i := 0; i < int(length); i++ {
+		sensorStatusType.Values[i], index = unmarshalVaruint(rawSrc, uint(len(rawSrc)), index)
+	}
+
+}
+
+func (onOffType *SwitchOnOff) UnmarshalInfo(rawSrc []byte) {
+	onOffType.Status = rawSrc[0]
+}
+
+func (sensorPropsType *EnvSensorProps) UnmarshalInfo(rawSrc []byte) {
+	sensorPropsType.Sensors = rawSrc[0]
+	length := rawSrc[1]
+	var index uint = 2
+	sensorPropsType.Triggers = make([]TriggersT, length)
+	for i := 0; i < int(length); i++ {
+		sensorPropsType.Triggers[i], index = ParseTriggers(rawSrc[index:])
+	}
+}
+
+func ParseTriggers(rawSrc []byte) (res TriggersT, index uint) {
+	res.Op = rawSrc[0]
+	res.Value, index = unmarshalVaruint(rawSrc, uint(len(rawSrc)), 1)
+	strSize := uint(rawSrc[index])
+	res.Name, _ = ParseString(rawSrc[index:])
+	index += strSize + 1
+	return
+}
+
+func (propsStrType *PropsString) UnmarshalInfo(rawSrc []byte) {
+	propsStrType.Length = rawSrc[0]
+	var arrIndex uint = 1
+	propsStrType.Name = make([]string, propsStrType.Length)
+	for i := uint(0); i < uint(propsStrType.Length); i++ {
+		propsStrType.Name[i], arrIndex = ParseString(rawSrc[arrIndex:])
+	}
+}

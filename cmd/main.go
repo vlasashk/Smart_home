@@ -18,8 +18,9 @@ func main() {
 	}
 	url := os.Args[1]
 	srcAddress, _ := strconv.ParseUint(os.Args[2], 16, 64)
-	InitialPacket(srcAddress)
-	data := []byte("C7MG_383AQEDSFVCuQ")
+	start := InitialPacket(srcAddress)
+	data := []byte(Base64UrlEncoder(start))
+	//
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
 		log.Panic("Error creating request:", err)
@@ -38,21 +39,24 @@ func main() {
 	fmt.Printf("Response Status: %s\n", body)
 	packet, _ := Base64UrlDecoder(body)
 	for i := 0; i < len(packet); i++ {
-		fmt.Println(packet[i])
+		fmt.Println(packet[i], "|||", packet[i].Payload.CmdBody)
 	}
-	//encoded := Base64UrlEncoder(packet)
+	encoded := Base64UrlEncoder(packet)
 	//fmt.Printf("%X %X %X %X %X %X\n", packet.Payload.Src, packet.Payload.Dst, packet.Payload.Serial, packet.Payload.DevType, packet.Payload.Cmd, packet.Payload.CmdBody)
 	//fmt.Println(string(body))
-	//fmt.Println(encoded)
+	fmt.Println(encoded)
 }
 
-func InitialPacket(hubAddress uint64) (res Packet) {
-	res.Payload.Src = EncodeULEB128(hubAddress)
-	res.Payload.Dst = EncodeULEB128(0x3FFF)
-	res.Payload.Serial = EncodeULEB128(1)
-	res.Payload.DevType = 1
-	res.Payload.Cmd = 1
-	res.Payload.CmdBody = nil
+func InitialPacket(hubAddress uint64) []Packet {
+	res := make([]Packet, 1)
+	res[0].Payload.Src = EncodeULEB128(hubAddress)
+	res[0].Payload.Dst = EncodeULEB128(0x3FFF)
+	res[0].Payload.Serial = EncodeULEB128(1)
+	res[0].Payload.DevType = 1
+	res[0].Payload.Cmd = 1
+	res[0].Payload.CmdBody = &Device{
+		DevName: "SmartHub",
+	}
 	Base64UrlEncoder(res)
-	return
+	return res
 }
