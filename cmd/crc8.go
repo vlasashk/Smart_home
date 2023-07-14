@@ -1,10 +1,8 @@
 package main
 
-var CrcLookup = CalculateTableCRC8()
-
 func CalculateTableCRC8() []byte {
 	const generator byte = 0x1D
-	crctable := make([]byte, 256)
+	crcTable := make([]byte, 256)
 	for dividend := 0; dividend < 256; dividend++ {
 		currByte := byte(dividend)
 		for bit := 0; bit < 8; bit++ {
@@ -15,9 +13,9 @@ func CalculateTableCRC8() []byte {
 				currByte <<= 1
 			}
 		}
-		crctable[dividend] = currByte
+		crcTable[dividend] = currByte
 	}
-	return crctable
+	return crcTable
 }
 func ComputeCRC8(bytes []byte) byte {
 	crc := byte(0)

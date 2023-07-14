@@ -53,3 +53,24 @@ type TriggersT struct {
 	Value Varuint
 	Name  string
 }
+
+var packetSerial uint64
+
+var CrcLookup = CalculateTableCRC8()
+
+const (
+	WhoIsHereCMD = iota + 1
+	IamHereCMD
+	GetStatusCMD
+	StatusCMD
+	SetStatusCMD
+	TickCMD
+)
+const (
+	SmartHubDev = iota + 1
+	EnvSensorDev
+	SwitchDev
+	LampDev
+	SocketDev
+	ClockDev
+)

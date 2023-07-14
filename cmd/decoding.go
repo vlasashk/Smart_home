@@ -87,7 +87,6 @@ func Base64UrlDecoder(rawSrc []byte) ([]Packet, error) {
 			data = append(data, Packet{})
 			packetSize, err = data[i].Unmarshal(decoded[processedSize:])
 			processedSize += packetSize
-
 			if err != nil {
 				break
 			}
@@ -102,7 +101,6 @@ func Base64UrlEncoder(data []Packet) string {
 	for i := 1; i < length; i++ {
 		test = append(test, data[i].Marshal()...)
 	}
-	fmt.Printf("%X\n", test)
 	encode := base64.RawURLEncoding.EncodeToString(test)
 	return encode
 }

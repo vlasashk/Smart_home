@@ -1,17 +1,5 @@
 package main
 
-//func MarshalCmdBody(device DeviceInfo, rawDst *[]byte) {
-//	switch data := device.(type) {
-//	case *Device:
-//		fmt.Println("x is nil") // here v has type interface{}
-//	case *EnvSensorStatus:
-//		fmt.Println("x is", data) // here v has type int
-//	case *SwitchOnOff:
-//		fmt.Println("x is bool or string") // here v has type interface{}
-//	case *TimerCmdBody:
-//	}
-//}
-
 func (timerType *TimerCmdBody) MarshalInfo(rawSrc *[]byte) {
 	marshalVaruint(timerType.Timestamp, rawSrc)
 }

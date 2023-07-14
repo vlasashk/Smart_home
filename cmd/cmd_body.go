@@ -1,22 +1,5 @@
 package main
 
-const (
-	WhoIsHereCMD = iota + 1
-	IamHereCMD
-	GetStatusCMD
-	StatusCMD
-	SetStatusCMD
-	TickCMD
-)
-const (
-	SmartHubDev = iota + 1
-	EnvSensorDev
-	SwitchDev
-	LampDev
-	SocketDev
-	ClockDev
-)
-
 func ParseCmdBody(device, cmd byte, rawSrc []byte) DeviceInfo {
 	var res DeviceInfo
 	switch {
@@ -43,7 +26,9 @@ func ParseCmdBody(device, cmd byte, rawSrc []byte) DeviceInfo {
 	case device == ClockDev && cmd == IamHereCMD:
 		res = &Device{}
 	}
-	res.UnmarshalInfo(rawSrc)
+	if res != nil {
+		res.UnmarshalInfo(rawSrc)
+	}
 	return res
 }
 
@@ -90,7 +75,9 @@ func (sensorPropsType *EnvSensorProps) UnmarshalInfo(rawSrc []byte) {
 	var index uint = 2
 	sensorPropsType.Triggers = make([]TriggersT, length)
 	for i := 0; i < int(length); i++ {
-		sensorPropsType.Triggers[i], index = ParseTriggers(rawSrc[index:])
+		var processed uint
+		sensorPropsType.Triggers[i], processed = ParseTriggers(rawSrc[index:])
+		index += processed
 	}
 }
 
@@ -108,6 +95,8 @@ func (propsStrType *PropsString) UnmarshalInfo(rawSrc []byte) {
 	var arrIndex uint = 1
 	propsStrType.Name = make([]string, propsStrType.Length)
 	for i := uint(0); i < uint(propsStrType.Length); i++ {
-		propsStrType.Name[i], arrIndex = ParseString(rawSrc[arrIndex:])
+		var processed uint
+		propsStrType.Name[i], processed = ParseString(rawSrc[arrIndex:])
+		arrIndex += processed
 	}
 }
