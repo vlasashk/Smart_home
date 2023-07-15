@@ -54,8 +54,6 @@ type TriggersT struct {
 	Name  string
 }
 
-var packetSerial uint64
-
 var CrcLookup = CalculateTableCRC8()
 
 const (
@@ -74,3 +72,21 @@ const (
 	SocketDev
 	ClockDev
 )
+
+type DeviceAddr struct {
+	Address    Varuint
+	DevType    byte
+	Controlled []string
+}
+
+type SmartHub struct {
+	PacketsQueue     *Queue
+	CurrTime         uint64
+	HubAddress       Varuint
+	PacketSerial     uint64
+	HubName          string
+	ActiveDevices    map[string]DeviceAddr
+	DeviceNames      map[Varuint]string
+	AwaitingResponse map[string]uint64
+	HubTriggers      EnvSensorProps
+}
