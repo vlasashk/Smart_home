@@ -1,7 +1,52 @@
 package main
 
-func (hub *SmartHub) RequestHandler(req []byte) {
+import (
+	"io/ioutil"
+	"net/http"
+	"os"
+)
 
+func (hub *SmartHub) ResponseHandler(packets []Packet) {
+	for i := 0; i < len(packets); i++ {
+		switch packets[i].Payload.Cmd {
+		case WhoIsHereCMD:
+			hub.ReceiveWhoIsHere(packets[i])
+		case IamHereCMD:
+			hub.AddDevice(packets[i])
+		case StatusCMD:
+			hub.ReceiveStatus(packets[i])
+		case TickCMD:
+			hub.ReceiveTick(packets[i])
+		}
+	}
+}
+
+func (hub *SmartHub) SendHandler(client *http.Client, url string) []Packet {
+	packets, ok := hub.PacketsQueue.SendPack()
+	var res []Packet
+	var data []byte
+	if ok {
+		data = []byte(hub.SendSetGetPacket(packets))
+	} else {
+		data = []byte("")
+	}
+	req := MakeHttpReq(url, data)
+	resp, err := client.Do(req)
+	if err != nil {
+		os.Exit(99)
+	}
+	if resp.StatusCode == http.StatusNoContent {
+		os.Exit(0)
+	} else if resp.StatusCode != http.StatusOK {
+		os.Exit(99)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		os.Exit(99)
+	}
+	res, _ = Base64UrlDecoder(body)
+	resp.Body.Close()
+	return res
 }
 
 func (hub *SmartHub) SendSetGetPacket(packets []Packet) string {
@@ -18,7 +63,7 @@ func (hub *SmartHub) SendSetGetPacket(packets []Packet) string {
 	return Base64UrlEncoder(packets)
 }
 
-func (hub *SmartHub) ReceiveIamHere(data Packet) {
+func (hub *SmartHub) AddDevice(data Packet) {
 	switch dev := data.Payload.CmdBody.(type) {
 	case *Device:
 		temp := DeviceAddr{
@@ -43,14 +88,17 @@ func (hub *SmartHub) ReceiveIamHere(data Packet) {
 	}
 }
 
-func (hub *SmartHub) ReceiveTick(clockTick TimerCmdBody) {
-	hub.CurrTime = DecodeULEB128(clockTick.Timestamp)
-	for device, sentTime := range hub.AwaitingResponse {
-		if sentTime == 0 {
-			sentTime = hub.CurrTime
-		} else if _, ok := hub.ActiveDevices[device]; ok && (hub.CurrTime-sentTime > 300) {
-			delete(hub.DeviceNames, hub.ActiveDevices[device].Address)
-			delete(hub.ActiveDevices, device)
+func (hub *SmartHub) ReceiveTick(data Packet) {
+	clockTick, success := data.Payload.CmdBody.(*TimerCmdBody)
+	if success {
+		hub.CurrTime = DecodeULEB128(clockTick.Timestamp)
+		for device, sentTime := range hub.AwaitingResponse {
+			if sentTime == 0 {
+				hub.AwaitingResponse[device] = hub.CurrTime
+			} else if _, ok := hub.ActiveDevices[device]; ok && (hub.CurrTime-sentTime > 300) {
+				delete(hub.DeviceNames, hub.ActiveDevices[device].Address)
+				delete(hub.ActiveDevices, device)
+			}
 		}
 	}
 }
@@ -193,7 +241,7 @@ func parseEnvValues(trigger EnvSensorProps, value EnvSensorStatus) map[byte]uint
 	return envInfo
 }
 
-func (hub *SmartHub) SendWhoIsHere() string {
+func (hub *SmartHub) SendWhoIsHere() {
 	res := make([]Packet, 1)
 	res[0].Payload.Src = hub.HubAddress
 	res[0].Payload.Dst = EncodeULEB128(0x3FFF)
@@ -204,10 +252,10 @@ func (hub *SmartHub) SendWhoIsHere() string {
 	res[0].Payload.CmdBody = &Device{
 		DevName: hub.HubName,
 	}
-	return Base64UrlEncoder(res)
+	hub.PacketsQueue.AddPack(res)
 }
 
-func (hub *SmartHub) SendIamHere() string {
+func (hub *SmartHub) ReceiveWhoIsHere(packet Packet) {
 	res := make([]Packet, 1)
 	res[0].Payload.Src = hub.HubAddress
 	res[0].Payload.Dst = EncodeULEB128(0x3FFF)
@@ -218,5 +266,6 @@ func (hub *SmartHub) SendIamHere() string {
 	res[0].Payload.CmdBody = &Device{
 		DevName: hub.HubName,
 	}
-	return Base64UrlEncoder(res)
+	hub.PacketsQueue.AddPack(res)
+	hub.AddDevice(packet)
 }
