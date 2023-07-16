@@ -1,5 +1,13 @@
 package main
 
+/*
+ =========================================
+|                                         |
+|    CMD_BODY INTERFACE (UN)MARSHALING    |
+|                                         |
+ =========================================
+*/
+
 func (timerType *TimerCmdBody) MarshalInfo(rawSrc *[]byte) {
 	marshalVaruint(timerType.Timestamp, rawSrc)
 }

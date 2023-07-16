@@ -5,6 +5,15 @@ import (
 	"fmt"
 )
 
+/*
+ =========================================
+|                                         |
+|      Packet struct (UN)MARSHALING       |
+|     BASE64URL, ULEB128 (en)decoding     |
+|                                         |
+ =========================================
+*/
+
 func (data *Packet) Unmarshal(rawSrc []byte) (int, error) {
 	var index uint = 1
 	var err error = nil

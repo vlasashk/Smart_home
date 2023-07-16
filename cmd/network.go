@@ -1,10 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"io/ioutil"
 	"net/http"
 	"os"
 )
+
+/*
+ =========================================
+|                                         |
+|     Network Response Handling Logic     |
+|                                         |
+ =========================================
+*/
 
 func (hub *SmartHub) ResponseHandler(packets []Packet) {
 	for i := 0; i < len(packets); i++ {
@@ -49,6 +58,23 @@ func (hub *SmartHub) SendHandler(client *http.Client, url string) []Packet {
 	return res
 }
 
+func MakeHttpReq(url string, data []byte) *http.Request {
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	if err != nil {
+		os.Exit(99)
+	}
+	req.Header.Set("Content-Type", "text/plain")
+	return req
+}
+
+/*
+ =========================================
+|                                         |
+|    Packet Creation Logic Based On CMD   |
+|                                         |
+ =========================================
+*/
+
 func (hub *SmartHub) SendSetGetPacket(packets []Packet) string {
 	length := len(packets)
 	for i := 0; i < length; i++ {
@@ -77,6 +103,12 @@ func (hub *SmartHub) AddDevice(data Packet) {
 				temp.Controlled = body.Name
 			}
 		}
+		if data.Payload.DevType == EnvSensorDev {
+			body, ok := dev.DevProps.(*EnvSensorProps)
+			if ok {
+				hub.HubTriggers[data.Payload.Src] = *body
+			}
+		}
 		hub.ActiveDevices[dev.DevName] = temp
 		hub.DeviceNames[data.Payload.Src] = dev.DevName
 		packet, ok := hub.makeGetStatusPack(dev.DevName)
@@ -96,11 +128,19 @@ func (hub *SmartHub) ReceiveTick(data Packet) {
 			if sentTime == 0 {
 				hub.AwaitingResponse[device] = hub.CurrTime
 			} else if _, ok := hub.ActiveDevices[device]; ok && (hub.CurrTime-sentTime > 300) {
-				delete(hub.DeviceNames, hub.ActiveDevices[device].Address)
-				delete(hub.ActiveDevices, device)
+				hub.RemoveDevice(device)
 			}
 		}
 	}
+}
+
+func (hub *SmartHub) RemoveDevice(device string) {
+	if hub.ActiveDevices[device].DevType == EnvSensorDev {
+		delete(hub.HubTriggers, hub.ActiveDevices[device].Address)
+	}
+	delete(hub.AwaitingResponse, device)
+	delete(hub.DeviceNames, hub.ActiveDevices[device].Address)
+	delete(hub.ActiveDevices, device)
 }
 
 func (hub *SmartHub) ReceiveStatus(pack Packet) {
@@ -123,8 +163,8 @@ func (hub *SmartHub) ReceiveStatus(pack Packet) {
 	case EnvSensorDev:
 		switch dev := pack.Payload.CmdBody.(type) {
 		case *EnvSensorStatus:
-			if len(hub.HubTriggers.Triggers) > 0 {
-				hub.TriggerResponseAction(*dev)
+			if len(hub.HubTriggers[pack.Payload.Src].Triggers) > 0 {
+				hub.TriggerResponseAction(pack.Payload.Src, *dev)
 			}
 		}
 	}
@@ -183,8 +223,8 @@ func (hub *SmartHub) makeSetStatusPack(onOff byte, dstName string) (Packet, bool
 	return setPacket, ok
 }
 
-func (hub *SmartHub) TriggerResponseAction(value EnvSensorStatus) {
-	trigger := hub.HubTriggers
+func (hub *SmartHub) TriggerResponseAction(sensor Varuint, value EnvSensorStatus) {
+	trigger := hub.HubTriggers[sensor]
 	envInfo := parseEnvValues(trigger, value)
 	length := len(trigger.Triggers)
 	typeMask := byte(0xC)

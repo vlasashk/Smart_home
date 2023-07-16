@@ -1,5 +1,13 @@
 package main
 
+/*
+ =========================================
+|                                         |
+|            CRC8 Calculation             |
+|                                         |
+ =========================================
+*/
+
 func CalculateTableCRC8() []byte {
 	const generator byte = 0x1D
 	crcTable := make([]byte, 256)

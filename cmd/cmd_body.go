@@ -1,5 +1,13 @@
 package main
 
+/*
+ =========================================
+|                                         |
+|    CMD_BODY INTERFACE (UN)MARSHALING    |
+|                                         |
+ =========================================
+*/
+
 func ParseCmdBody(device, cmd byte, rawSrc []byte) DeviceInfo {
 	var res DeviceInfo
 	switch {

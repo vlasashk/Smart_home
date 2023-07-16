@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"net/http"
 	"os"
 	"strconv"
@@ -23,15 +22,6 @@ func main() {
 	}
 }
 
-func MakeHttpReq(url string, data []byte) *http.Request {
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
-	if err != nil {
-		os.Exit(99)
-	}
-	req.Header.Set("Content-Type", "text/plain")
-	return req
-}
-
 func InitHub(address uint64) SmartHub {
 	return SmartHub{
 		PacketsQueue:     &Queue{},
@@ -42,6 +32,6 @@ func InitHub(address uint64) SmartHub {
 		ActiveDevices:    make(map[string]DeviceAddr),
 		DeviceNames:      make(map[Varuint]string),
 		AwaitingResponse: make(map[string]uint64),
-		HubTriggers:      EnvSensorProps{},
+		HubTriggers:      make(map[Varuint]EnvSensorProps),
 	}
 }

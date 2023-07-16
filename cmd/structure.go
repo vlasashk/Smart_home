@@ -1,5 +1,13 @@
 package main
 
+/*
+ =========================================
+|                                         |
+|             Project Structure           |
+|                                         |
+ =========================================
+*/
+
 type Varuint uint64
 
 type DeviceInfo interface {
@@ -88,5 +96,5 @@ type SmartHub struct {
 	ActiveDevices    map[string]DeviceAddr
 	DeviceNames      map[Varuint]string
 	AwaitingResponse map[string]uint64
-	HubTriggers      EnvSensorProps
+	HubTriggers      map[Varuint]EnvSensorProps
 }

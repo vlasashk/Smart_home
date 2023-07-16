@@ -1,5 +1,13 @@
 package main
 
+/*
+ =========================================
+|                                         |
+|Queue Implementation for request handling|
+|                                         |
+ =========================================
+*/
+
 type Node struct {
 	packets []Packet
 	next    *Node
