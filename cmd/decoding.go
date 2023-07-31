@@ -2,89 +2,16 @@ package main
 
 import (
 	"encoding/base64"
-	"fmt"
 )
 
 /*
  =========================================
 |                                         |
-|      Packet struct (UN)MARSHALING       |
+|              Packet struct              |
 |     BASE64URL, ULEB128 (en)decoding     |
 |                                         |
  =========================================
 */
-
-func (data *Packet) Unmarshal(rawSrc []byte) (int, error) {
-	var index uint = 1
-	var err error = nil
-	data.Length = rawSrc[0]
-	data.Crc8 = rawSrc[data.Length+1]
-	computeCrc := ComputeCRC8(rawSrc[1 : data.Length+1])
-	if computeCrc == data.Crc8 {
-		data.Payload.Src, index = unmarshalVaruint(rawSrc, uint(data.Length), index)
-		data.Payload.Dst, index = unmarshalVaruint(rawSrc, uint(data.Length), index)
-		data.Payload.Serial, index = unmarshalVaruint(rawSrc, uint(data.Length), index)
-		data.Payload.DevType = rawSrc[index]
-		data.Payload.Cmd = rawSrc[index+1]
-		index += 2
-		data.Payload.CmdBody = ParseCmdBody(data.Payload.DevType, data.Payload.Cmd, rawSrc[index:data.Length+1])
-	} else {
-		err = fmt.Errorf("ERROR: CRC8 values do not match. Calculated = %d, Received = %d", computeCrc, data.Crc8)
-	}
-
-	return int(data.Length + 2), err
-}
-
-func (data *Packet) Marshal() []byte {
-	payloadRaw := make([]byte, 0, 8)
-	marshalVaruint(data.Payload.Src, &payloadRaw)
-	marshalVaruint(data.Payload.Dst, &payloadRaw)
-	marshalVaruint(data.Payload.Serial, &payloadRaw)
-	payloadRaw = append(payloadRaw, data.Payload.DevType)
-	payloadRaw = append(payloadRaw, data.Payload.Cmd)
-	if data.Payload.CmdBody != nil {
-		data.Payload.CmdBody.MarshalInfo(&payloadRaw)
-	}
-
-	payloadLen := len(payloadRaw)
-	rawData := make([]byte, payloadLen+2)
-	rawData[0] = byte(payloadLen)
-	copy(rawData[1:], payloadRaw)
-	rawData[payloadLen+1] = ComputeCRC8(rawData[1 : payloadLen+1])
-	return rawData
-}
-
-func marshalVaruint(src Varuint, rawData *[]byte) {
-	octal := Varuint(0xFF)
-	temp := make([]byte, 0, 8)
-	tempLen := 0
-	temp = append(temp, byte(src&octal))
-	src >>= 8
-	tempLen++
-	for src != 0 {
-		temp = append(temp, byte(src&octal))
-		src >>= 8
-		tempLen++
-	}
-	for i := len(temp) - 1; i >= 0; i-- {
-		*rawData = append(*rawData, temp[i])
-	}
-}
-
-func unmarshalVaruint(rawSrc []byte, length uint, index uint) (res Varuint, newIndex uint) {
-	stopULEB := byte(0x80)
-	newIndex = index
-	for i := index; i < length; i++ {
-		newIndex++
-		res |= Varuint(rawSrc[i])
-		if rawSrc[i]&stopULEB == 0 {
-			break
-		} else {
-			res <<= 8
-		}
-	}
-	return
-}
 
 func Base64UrlDecoder(rawSrc []byte) ([]Packet, error) {
 	data := make([]Packet, 0)
