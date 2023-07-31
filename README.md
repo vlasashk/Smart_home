@@ -45,7 +45,7 @@ Each packet transmitted over the network is described as follows:
 type packet struct {
     length byte
     payload bytes
-    src8 byte
+    crc8 byte
 };
 ```
 Where:
@@ -62,7 +62,7 @@ Where:
     };
   ```
 - `varuint` - unsigned integer in ULEB128 format.
-- `src8` - checksum of the payload field calculated using the cyclic redundancy check 8 algorithm.
+- `crc8` - checksum of the payload field calculated using the cyclic redundancy check 8 algorithm.
 
 ### Functionality
 - 0x01 - WHOISHERE - sent by a device wishing to discover its neighbors on the network.
